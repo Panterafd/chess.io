@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Шахматы</title>
+  <link rel="icon" type="image/png" href="2222.png">
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #222;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+
+    h1 {
+      margin: 15px;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(8, 60px);
+      grid-template-rows: repeat(8, 60px);
+      border: 3px solid #fff;
+    }
+
+    .square {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 40px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .dark {
+      background: #769656;
+    }
+    .light {
+      background: #eeeed2;
+    }
+
+    /* подсветка ходов */
+    .highlight {
+      position: relative;
+    }
+
+    .highlight::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 20px;
+      height: 20px;
+      background: rgba(0, 0, 0, 0.45);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    /* захват фигуры */
+    .highlight.capture::after {
+      background: rgba(200, 30, 30, 0.9);
+      width: 22px;
+      height: 22px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Шахматы</h1>
+  <div id="board"></div>
+
+  <script>
+    const board = document.getElementById("board");
+    let selectedPiece = null;
+    let currentTurn = "white"; // белые начинают
+
+    const startPosition = [
+      ["♜","♞","♝","♛","♚","♝","♞","♜"],
+      ["♟","♟","♟","♟","♟","♟","♟","♟"],
+      ["","","","","","","",""],
+      ["","","","","","","",""],
+      ["","","","","","","",""],
+      ["","","","","","","",""],
+      ["♙","♙","♙","♙","♙","♙","♙","♙"],
+      ["♖","♘","♗","♕","♔","♗","♘","♖"],
+    ];
+
+    // создать доску
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const square = document.createElement("div");
+        square.classList.add("square");
+        square.classList.add((row + col) % 2 === 0 ? "light" : "dark");
+
+        let piece = startPosition[row][col];
+        if (piece) square.textContent = piece;
+
+        square.dataset.row = row;
+        square.dataset.col = col;
+        square.addEventListener("click", onSquareClick);
+
+        board.appendChild(square);
+      }
+    }
+
+    function onSquareClick(e) {
+      const square = e.target;
+
+      if (selectedPiece) {
+        // если кликаем по допустимой клетке
+        if (square.classList.contains("highlight")) {
+          square.textContent = selectedPiece.textContent;
+          selectedPiece.textContent = "";
+          selectedPiece = null;
+          clearHighlights();
+          switchTurn();
+        } else {
+          // снимаем выбор
+          selectedPiece = null;
+          clearHighlights();
+        }
+      } else {
+        if (square.textContent) {
+          // проверяем цвет фигуры
+          if (getPieceColor(square.textContent) === currentTurn) {
+            selectedPiece = square;
+            clearHighlights();
+            highlightMoves(square);
+          }
+        }
+      }
+    }
+
+    function getPieceColor(piece) {
+      if ("♙♖♘♗♕♔".includes(piece)) return "white";
+      if ("♟♜♞♝♛♚".includes(piece)) return "black";
+      return null;
+    }
+
+    function switchTurn() {
+      currentTurn = currentTurn === "white" ? "black" : "white";
+      console.log("Ход:", currentTurn);
+    }
+
+    // подсветка ходов
+    function highlightMoves(square) {
+      const allSquares = document.querySelectorAll(".square");
+      allSquares.forEach(sq => {
+        if (canMove(square, sq)) {
+          sq.classList.add("highlight");
+          if (sq.textContent && getPieceColor(sq.textContent) !== getPieceColor(square.textContent)) {
+            sq.classList.add("capture");
+          }
+        }
+      });
+    }
+
+    function clearHighlights() {
+      document.querySelectorAll(".square").forEach(sq => {
+        sq.classList.remove("highlight", "capture");
+      });
+    }
+
+    // правила ходов (очень упрощённые!)
+    function canMove(fromSquare, toSquare) {
+      if (fromSquare === toSquare) return false;
+
+      const piece = fromSquare.textContent;
+      if (!piece) return false;
+
+      const fromRow = parseInt(fromSquare.dataset.row);
+      const fromCol = parseInt(fromSquare.dataset.col);
+      const toRow = parseInt(toSquare.dataset.row);
+      const toCol = parseInt(toSquare.dataset.col);
+
+      const dx = toCol - fromCol;
+      const dy = toRow - fromRow;
+
+      const target = toSquare.textContent;
+
+      // нельзя брать свою фигуру
+      if (target && getPieceColor(target) === getPieceColor(piece)) return false;
+
+      switch (piece) {
+        case "♙": // белая пешка
+          if (dx === 0 && dy === -1 && !target) return true;
+          if (dx === 0 && dy === -2 && fromRow === 6 && !target) {
+            const midSquare = document.querySelector(`[data-row='5'][data-col='${fromCol}']`);
+            if (midSquare && !midSquare.textContent) return true;
+          }
+          if (Math.abs(dx) === 1 && dy === -1 && target) return true;
+          break;
+
+        case "♟": // чёрная пешка
+          if (dx === 0 && dy === 1 && !target) return true;
+          if (dx === 0 && dy === 2 && fromRow === 1 && !target) {
+            const midSquare = document.querySelector(`[data-row='2'][data-col='${fromCol}']`);
+            if (midSquare && !midSquare.textContent) return true;
+          }
+          if (Math.abs(dx) === 1 && dy === 1 && target) return true;
+          break;
+
+        case "♖": case "♜": // ладья
+          if (dx === 0 || dy === 0) return isPathClear(fromRow, fromCol, toRow, toCol);
+          break;
+
+        case "♗": case "♝": // слон
+          if (Math.abs(dx) === Math.abs(dy)) return isPathClear(fromRow, fromCol, toRow, toCol);
+          break;
+
+        case "♕": case "♛": // ферзь
+          if (dx === 0 || dy === 0 || Math.abs(dx) === Math.abs(dy)) {
+            return isPathClear(fromRow, fromCol, toRow, toCol);
+          }
+          break;
+
+        case "♘": case "♞": // конь
+          if ((Math.abs(dx) === 2 && Math.abs(dy) === 1) ||
+              (Math.abs(dx) === 1 && Math.abs(dy) === 2)) return true;
+          break;
+
+        case "♔": case "♚": // король
+          if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) return true;
+          break;
+      }
+      return false;
+    }
+
+    function isPathClear(fromRow, fromCol, toRow, toCol) {
+      const stepRow = Math.sign(toRow - fromRow);
+      const stepCol = Math.sign(toCol - fromCol);
+      let r = fromRow + stepRow;
+      let c = fromCol + stepCol;
+      while (r !== toRow || c !== toCol) {
+        const square = document.querySelector(`[data-row='${r}'][data-col='${c}']`);
+        if (square.textContent) return false;
+        r += stepRow;
+        c += stepCol;
+      }
+      return true;
+    }
+  </script>
+</body>
+</html>
