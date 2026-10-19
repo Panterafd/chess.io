@@ -1,249 +1,262 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <title>Шахматы</title>
-  <link rel="icon" type="image/png" href="2222.png">
-  <style>
-    body {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      background: #222;
-      color: white;
-      font-family: Arial, sans-serif;
-    }
-
-    h1 {
-      margin: 15px;
-    }
-
-    #board {
-      display: grid;
-      grid-template-columns: repeat(8, 60px);
-      grid-template-rows: repeat(8, 60px);
-      border: 3px solid #fff;
-    }
-
-    .square {
-      width: 60px;
-      height: 60px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 40px;
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .dark {
-      background: #769656;
-    }
-    .light {
-      background: #eeeed2;
-    }
-
-    /* подсветка ходов */
-    .highlight {
-      position: relative;
-    }
-
-    .highlight::after {
-      content: "";
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      width: 20px;
-      height: 20px;
-      background: rgba(0, 0, 0, 0.45);
-      border-radius: 50%;
-      pointer-events: none;
-    }
-
-    /* захват фигуры */
-    .highlight.capture::after {
-      background: rgba(200, 30, 30, 0.9);
-      width: 22px;
-      height: 22px;
-      pointer-events: none;
-    }
-  </style>
-</head>
-<body>
-  <h1>Шахматы</h1>
-  <div id="board"></div>
-
-  <script>
-    const board = document.getElementById("board");
-    let selectedPiece = null;
-    let currentTurn = "white"; // белые начинают
-
-    const startPosition = [
-      ["♜","♞","♝","♛","♚","♝","♞","♜"],
-      ["♟","♟","♟","♟","♟","♟","♟","♟"],
-      ["","","","","","","",""],
-      ["","","","","","","",""],
-      ["","","","","","","",""],
-      ["","","","","","","",""],
-      ["♙","♙","♙","♙","♙","♙","♙","♙"],
-      ["♖","♘","♗","♕","♔","♗","♘","♖"],
-    ];
-
-    // создать доску
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        const square = document.createElement("div");
-        square.classList.add("square");
-        square.classList.add((row + col) % 2 === 0 ? "light" : "dark");
-
-        let piece = startPosition[row][col];
-        if (piece) square.textContent = piece;
-
-        square.dataset.row = row;
-        square.dataset.col = col;
-        square.addEventListener("click", onSquareClick);
-
-        board.appendChild(square);
-      }
-    }
-
-    function onSquareClick(e) {
-      const square = e.target;
-
-      if (selectedPiece) {
-        // если кликаем по допустимой клетке
-        if (square.classList.contains("highlight")) {
-          square.textContent = selectedPiece.textContent;
-          selectedPiece.textContent = "";
-          selectedPiece = null;
-          clearHighlights();
-          switchTurn();
-        } else {
-          // снимаем выбор
-          selectedPiece = null;
-          clearHighlights();
-        }
-      } else {
-        if (square.textContent) {
-          // проверяем цвет фигуры
-          if (getPieceColor(square.textContent) === currentTurn) {
-            selectedPiece = square;
-            clearHighlights();
-            highlightMoves(square);
-          }
-        }
-      }
-    }
-
-    function getPieceColor(piece) {
-      if ("♙♖♘♗♕♔".includes(piece)) return "white";
-      if ("♟♜♞♝♛♚".includes(piece)) return "black";
-      return null;
-    }
-
-    function switchTurn() {
-      currentTurn = currentTurn === "white" ? "black" : "white";
-      console.log("Ход:", currentTurn);
-    }
-
-    // подсветка ходов
-    function highlightMoves(square) {
-      const allSquares = document.querySelectorAll(".square");
-      allSquares.forEach(sq => {
-        if (canMove(square, sq)) {
-          sq.classList.add("highlight");
-          if (sq.textContent && getPieceColor(sq.textContent) !== getPieceColor(square.textContent)) {
-            sq.classList.add("capture");
-          }
-        }
-      });
-    }
-
-    function clearHighlights() {
-      document.querySelectorAll(".square").forEach(sq => {
-        sq.classList.remove("highlight", "capture");
-      });
-    }
-
-    // правила ходов (очень упрощённые!)
-    function canMove(fromSquare, toSquare) {
-      if (fromSquare === toSquare) return false;
-
-      const piece = fromSquare.textContent;
-      if (!piece) return false;
-
-      const fromRow = parseInt(fromSquare.dataset.row);
-      const fromCol = parseInt(fromSquare.dataset.col);
-      const toRow = parseInt(toSquare.dataset.row);
-      const toCol = parseInt(toSquare.dataset.col);
-
-      const dx = toCol - fromCol;
-      const dy = toRow - fromRow;
-
-      const target = toSquare.textContent;
-
-      // нельзя брать свою фигуру
-      if (target && getPieceColor(target) === getPieceColor(piece)) return false;
-
-      switch (piece) {
-        case "♙": // белая пешка
-          if (dx === 0 && dy === -1 && !target) return true;
-          if (dx === 0 && dy === -2 && fromRow === 6 && !target) {
-            const midSquare = document.querySelector(`[data-row='5'][data-col='${fromCol}']`);
-            if (midSquare && !midSquare.textContent) return true;
-          }
-          if (Math.abs(dx) === 1 && dy === -1 && target) return true;
-          break;
-
-        case "♟": // чёрная пешка
-          if (dx === 0 && dy === 1 && !target) return true;
-          if (dx === 0 && dy === 2 && fromRow === 1 && !target) {
-            const midSquare = document.querySelector(`[data-row='2'][data-col='${fromCol}']`);
-            if (midSquare && !midSquare.textContent) return true;
-          }
-          if (Math.abs(dx) === 1 && dy === 1 && target) return true;
-          break;
-
-        case "♖": case "♜": // ладья
-          if (dx === 0 || dy === 0) return isPathClear(fromRow, fromCol, toRow, toCol);
-          break;
-
-        case "♗": case "♝": // слон
-          if (Math.abs(dx) === Math.abs(dy)) return isPathClear(fromRow, fromCol, toRow, toCol);
-          break;
-
-        case "♕": case "♛": // ферзь
-          if (dx === 0 || dy === 0 || Math.abs(dx) === Math.abs(dy)) {
-            return isPathClear(fromRow, fromCol, toRow, toCol);
-          }
-          break;
-
-        case "♘": case "♞": // конь
-          if ((Math.abs(dx) === 2 && Math.abs(dy) === 1) ||
-              (Math.abs(dx) === 1 && Math.abs(dy) === 2)) return true;
-          break;
-
-        case "♔": case "♚": // король
-          if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) return true;
-          break;
-      }
-      return false;
-    }
-
-    function isPathClear(fromRow, fromCol, toRow, toCol) {
-      const stepRow = Math.sign(toRow - fromRow);
-      const stepCol = Math.sign(toCol - fromCol);
-      let r = fromRow + stepRow;
-      let c = fromCol + stepCol;
-      while (r !== toRow || c !== toCol) {
-        const square = document.querySelector(`[data-row='${r}'][data-col='${c}']`);
-        if (square.textContent) return false;
-        r += stepRow;
-        c += stepCol;
-      }
-      return true;
-    }
-  </script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#263e35" />
+    <meta
+      name="description"
+      content="Ваша следующая партия. Играйте в шахматы с другом или компьютером: полные правила, часы, подсказки и сохранение прогресса."
+    />
+    <title>chess.io — Ваша следующая партия</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./src/app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#board">Перейти к доске</a>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="chess.io — главная"
+        ><span class="brand-mark" aria-hidden="true">♞</span>chess<span>.io</span></a
+      >
+      <nav aria-label="Навигация">
+        <span class="nav-current">Играть</span
+        ><button id="help-button" class="nav-button">
+          Как играть <span aria-hidden="true">↗</span>
+        </button>
+      </nav>
+      <span class="header-note"><i></i> Место для хорошей партии</span>
+    </header>
+    <main class="workspace">
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">64 КЛЕТКИ. БЕСКОНЕЧНОСТЬ ИДЕЙ.</p>
+          <h1 id="page-title">Ваш следующий ход<span>.</span></h1>
+        </div>
+        <p>Остановитесь на минуту.<br />Подумайте на ход вперёд.</p>
+      </section>
+      <div class="game-layout">
+        <section class="play-area" aria-label="Шахматная партия">
+          <div class="player-strip" id="top-player">
+            <span class="avatar" aria-hidden="true"></span>
+            <div class="player-details">
+              <strong class="player-name"></strong><span class="player-subtitle"></span
+              ><span class="captured" aria-label="Взятые фигуры"></span>
+            </div>
+            <span class="turn-indicator" aria-label="Сейчас ходит"></span
+            ><span class="clock" aria-label="Оставшееся время"></span>
+          </div>
+          <div class="board-frame">
+            <div
+              id="board"
+              role="group"
+              aria-label="Шахматная доска. Стрелки — перемещение, Enter — выбор фигуры и ход."
+            ></div>
+          </div>
+          <div class="player-strip" id="bottom-player">
+            <span class="avatar" aria-hidden="true"></span>
+            <div class="player-details">
+              <strong class="player-name"></strong><span class="player-subtitle"></span
+              ><span class="captured" aria-label="Взятые фигуры"></span>
+            </div>
+            <span class="turn-indicator" aria-label="Сейчас ходит"></span
+            ><span class="clock" aria-label="Оставшееся время"></span>
+          </div>
+          <div class="board-toolbar" aria-label="Управление доской">
+            <span id="board-caption">Кликните по фигуре, чтобы увидеть ходы</span>
+            <div>
+              <button
+                id="flip-button"
+                class="icon-button"
+                title="Перевернуть доску (F)"
+                aria-label="Перевернуть доску"
+              >
+                ⇅</button
+              ><button
+                id="sound-button"
+                class="icon-button"
+                title="Включить звук"
+                aria-label="Включить звук"
+                aria-pressed="false"
+              >
+                ♪</button
+              ><button
+                id="coordinates-button"
+                class="icon-button"
+                title="Координаты"
+                aria-label="Показать координаты"
+                aria-pressed="true"
+              >
+                a₁
+              </button>
+            </div>
+          </div>
+        </section>
+        <aside class="game-panel" aria-label="Информация о партии">
+          <section class="session-card">
+            <div class="section-heading">
+              <span class="eyebrow">ВАША ПАРТИЯ</span
+              ><span id="mode-badge" class="badge">С компьютером</span>
+            </div>
+            <h2 id="status-title">Ход белых</h2>
+            <p id="status-detail" role="status" aria-live="polite">
+              Выберите фигуру и сделайте первый ход.
+            </p>
+            <div id="game-summary" class="game-summary"></div>
+            <button id="retry-button" class="button secondary" hidden>Повторить расчёт</button>
+            <button id="new-game-button" class="button primary">
+              <span aria-hidden="true">＋</span> Новая партия
+              <span class="button-arrow" aria-hidden="true">↗</span>
+            </button>
+          </section>
+          <section class="history-card" aria-labelledby="history-heading">
+            <div class="section-heading">
+              <h3 id="history-heading">История ходов</h3>
+              <span id="move-count" class="muted">0 ходов</span>
+            </div>
+            <div class="history-columns" aria-hidden="true">
+              <span>№</span><span>Белые</span><span>Чёрные</span>
+            </div>
+            <div id="move-list" class="move-list" tabindex="0" aria-label="Список ходов"></div>
+            <div class="history-actions">
+              <button id="undo-button" title="Отменить ход (U)">
+                <span aria-hidden="true">↶</span> Отменить</button
+              ><button id="hint-button"><span aria-hidden="true">◇</span> Подсказка</button>
+            </div>
+          </section>
+          <div class="game-actions">
+            <button id="draw-button">½ Ничья</button><button id="resign-button">⚑ Сдаться</button
+            ><button id="export-button" title="Скачать партию в формате PGN">↓ PGN</button>
+          </div>
+          <div class="tip-card">
+            <span class="tip-icon" aria-hidden="true">♘</span>
+            <div>
+              <span class="eyebrow">МАЛЕНЬКИЙ СОВЕТ</span>
+              <p id="tip-text">
+                Боритесь за центр. Так вашим фигурам будет проще найти хорошую работу.
+              </p>
+            </div>
+          </div>
+          <p id="save-status" class="save-status">
+            <span aria-hidden="true">✓</span> Партия сохраняется на этом устройстве
+          </p>
+        </aside>
+      </div>
+    </main>
+    <footer class="site-footer">
+      <span>Сделано для любви к игре.</span><span>Без регистрации. Только шахматы.</span
+      ><button
+        id="copy-fen-button"
+        class="nav-button"
+        title="Скопировать текущую позицию в формате FEN"
+      >
+        Скопировать FEN ↗
+      </button>
+    </footer>
+    <div id="toast" role="status" aria-live="polite" hidden></div>
+    <noscript><p class="noscript">Для игры включите JavaScript в браузере.</p></noscript>
+    <dialog id="new-game-dialog" aria-labelledby="new-game-title">
+      <form id="new-game-form">
+        <div class="dialog-top">
+          <span class="eyebrow">НАЧНЁМ С ЧИСТОЙ ДОСКИ</span
+          ><button type="button" class="icon-button close-dialog" aria-label="Закрыть">×</button>
+        </div>
+        <h2 id="new-game-title">Новая партия<span>.</span></h2>
+        <p class="dialog-description">Выберите соперника и свой ритм игры.</p>
+        <fieldset>
+          <legend>С кем играем?</legend>
+          <div class="choice-grid">
+            <label class="choice"
+              ><input type="radio" name="mode" value="computer" checked /><span
+                >♟ Компьютер<small>Три уровня сложности</small></span
+              ></label
+            ><label class="choice"
+              ><input type="radio" name="mode" value="local" /><span
+                >♙ С другом<small>На одном устройстве</small></span
+              ></label
+            >
+          </div>
+        </fieldset>
+        <div id="computer-options" class="form-row">
+          <label
+            >Ваша сторона<select name="side">
+              <option value="w">Белые</option>
+              <option value="b">Чёрные</option>
+              <option value="random">Случайная</option>
+            </select></label
+          ><label
+            >Сложность<select name="level">
+              <option value="easy">Начальный</option>
+              <option value="medium" selected>Средний</option>
+              <option value="hard">Продвинутый</option>
+            </select></label
+          >
+        </div>
+        <label class="field-label"
+          >Контроль времени<select name="time">
+            <option value="0+0">Без часов · в своём темпе</option>
+            <option value="180+2">3 + 2 · блиц</option>
+            <option value="300+0">5 минут · блиц</option>
+            <option value="600+0" selected>10 минут · рапид</option>
+            <option value="900+10">15 + 10 · рапид</option>
+          </select></label
+        >
+        <p class="form-note">
+          Текущая партия будет заменена. При необходимости сохраните её кнопкой «PGN».
+        </p>
+        <button type="submit" class="button primary">
+          Начать игру <span class="button-arrow" aria-hidden="true">→</span>
+        </button>
+      </form>
+    </dialog>
+    <dialog id="promotion-dialog" aria-labelledby="promotion-title">
+      <div class="dialog-top">
+        <span class="eyebrow">НОВЫЕ ВОЗМОЖНОСТИ</span
+        ><button class="icon-button close-dialog" aria-label="Отменить превращение">×</button>
+      </div>
+      <h2 id="promotion-title">Превратить пешку</h2>
+      <p>Выберите фигуру для последней горизонтали.</p>
+      <div id="promotion-choices" class="promotion-choices"></div>
+    </dialog>
+    <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-detail"></p>
+      <div class="dialog-actions">
+        <button class="button secondary close-dialog">Продолжить игру</button
+        ><button id="confirm-action" class="button primary">Подтвердить</button>
+      </div>
+    </dialog>
+    <dialog id="help-dialog" aria-labelledby="help-title">
+      <div class="dialog-top">
+        <span class="eyebrow">ПРОСТО НАЧНИТЕ</span
+        ><button class="icon-button close-dialog" aria-label="Закрыть справку">×</button>
+      </div>
+      <h2 id="help-title">Каждый ход имеет значение.</h2>
+      <p>Нажмите на свою фигуру, затем на подсвеченное поле. Повторное нажатие снимает выбор.</p>
+      <ul class="help-list">
+        <li>
+          <strong>Полные ходы.</strong> Рокировка — ход короля на две клетки. Взятие на проходе
+          доступно сразу после двойного хода пешки. При превращении выберите одну из четырёх фигур.
+        </li>
+        <li>
+          <strong>Честная позиция.</strong> Нельзя оставить короля под шахом. Мат завершает партию;
+          пат, недостаток материала, троекратное повторение и 50 ходов без взятия или хода пешкой
+          дают автоматическую ничью.
+        </li>
+        <li>
+          <strong>Ваш темп.</strong> Часы начинают идти после первого хода и продолжают отсчёт в
+          фоне. Отмена возвращает позицию и часы к моменту перед отменённым ходом.
+        </li>
+        <li>
+          <strong>Клавиатура.</strong> Стрелки — перемещение по доске, Enter или пробел — выбор и
+          ход, Escape — снять выбор. F — перевернуть доску, U — отменить ход.
+        </li>
+        <li>
+          <strong>Сохранение.</strong> Партия автоматически сохраняется в этом браузере. PGN
+          скачивает запись ходов; FEN копирует текущую позицию. Компьютер предназначен для
+          любительской игры и не имеет рейтинга Elo.
+        </li>
+      </ul>
+    </dialog>
+  </body>
 </html>
